@@ -230,7 +230,7 @@ class Node
 //runing code starts here
 OscSend send;
 "localhost" => string hostname;
-6449 => int port;
+6450 => int port;
 send.setHost(hostname,port);
 Chord current;
 Chord I;
@@ -274,7 +274,7 @@ IntList beats;
 IntList keys;
 LinkedList chords;
 chords.offer(I);
-keys.offer(3);
+keys.offer(0);
 beats.offer(4);
 0=>int rhythmCounter;
 fun void generateChords()
@@ -336,9 +336,15 @@ fun void generateBeats()
     }
 }
 
+fun void sendKey(){
+	send.startMsg("/key", "i");
+    keys.poll() => send.addInt;
+	50::ms => now;
+}
+
 for (0=>int i; i < instruments.cap(); i++)
 {
-    instruments[i]=>dac;
+    //instruments[i]=>dac;
 }
 
 fun void playChord(Chord current, int key, int beat)
@@ -359,7 +365,7 @@ fun void playChord(Chord current, int key, int beat)
     <<< "Beats Played: ", beat>>>;
     for (0=>int j;j<beat;j++)
     {
-        0.5::second=>now;
+        Math.random2f(1,2)::second=>now;
         float dyn;
         if (rhythmCounter == 0)
             0.2=>dyn;
@@ -381,6 +387,9 @@ fun void playChord(Chord current, int key, int beat)
         (rhythmCounter+1)%4=>rhythmCounter;
     }
 }
+
+spork ~ sendKey();
+
 while (true)
 {
     if (chords.size<5)

@@ -1,22 +1,23 @@
-OscRecv recv;
-6449 => recv.port;
-recv.listen();
-recv.event( "/key/root/type, i i i" ) @=> OscEvent @ oe;
+
 
 OscRecv recv2;
-6450 => recv2.port;
+6449 => recv2.port;
 recv2.listen();
-recv2.event( "/id/timbre/lifetime/n1/n2/n3/n4/n5/n6/n7/n8, s f i i i i i i i i i" ) @=> OscEvent @ om;
+recv2.event( "/timbre/lifetime/n1/n2/n3/n4/n5/n6/n7/n8, f i i i i i i i i i" ) @=> OscEvent @ om;
 // key is an integer MIDI note value (e.g., C is 0, C# is 1, etc.)
 // root is an integer MIDI note value (e.g., C is 0, C# is 1, etc.)
 // type is an integer (0 = major, 1 = minor, 2=dim, 3=aug, 4=sus4, 5=dom7)
 
+OscRecv recv;
+6450 => recv.port;
+recv.listen();
+recv.event( "/key/root/type, i i i" ) @=> OscEvent @ oe;
 
 0 => int key;
 0 => int root;
 0 => int type;
-600 => int portamento;
-3 => int detune;
+700 => float portamento;
+2 => int detune;
 4 => int numSynths;
 0 => int activeSynth;
 0 => int activeMelSynth;
@@ -165,8 +166,9 @@ fun void oscGetChord(){
 			oe.getInt() => type;
 			bassTone.freq() => float currentFreq;
 			(root + key) % 12 + 48 => Std.mtof => float destFreq;
-			for(0 => int x; x < portamento; x++){
-				currentFreq + ((destFreq - currentFreq) * x / portamento) => bassTone.freq;
+			Math.round(portamento * Math.randomf()) $ int => int portTime;
+			for(0 => int x; x < portTime; x++){
+				currentFreq + ((destFreq - currentFreq) * x / portTime) => bassTone.freq;
 				bassTone.freq() * 2 - 3 => octTone.freq;
 				bassTone.freq() => Std.ftom => fifthNote;
 				fifthNote + 7 => Std.mtof => fifthTone.freq;
@@ -177,16 +179,12 @@ fun void oscGetChord(){
 }
 
 fun void oscGetMelody(){
-	string id;
 	while(true){
 		om => now;
 		while(om.nextMsg()){
-			<<<"recieved osc">>>;
+			<<<"received melody">>>;
 			int notes[8];
-			om.getString() => id;
-			if(id != activeid){
-				id => activeid;
-				<<<activeid>>>;
+			if(true){
 				Math.random2(270, 500) => float melTime;
 				om.getFloat() => timbre;
 				om.getInt() * (1000 / melTime) $ int => lifetime;
@@ -214,8 +212,10 @@ fun void melody(int notes[], float timbre, dur notedel, int beats){
 fun void makeMelody(int note, float timbre, float gain){
 	84 + (note + key) % 12 => Std.mtof => s[activeMelSynth % numSynths].freq;
 	gain * 0.015 => s[activeMelSynth % numSynths].gain;
-	timbre * 5000 + 1600 => lpm[activeMelSynth % numSynths].freq;
+	timbre * 5000 + 1700 => lpm[activeMelSynth % numSynths].freq;
+	Math.sin(timbre * 7104) * 1.5 + 1 => lpm[activeMelSynth % numSynths].Q;
 	Math.sin(timbre * 16931) => p[activeMelSynth % numSynths].pan;
+	((Math.sin(timbre * 13063) + 1) * 30)::ms => e[activeMelSynth % numSynths].attackTime;
 	((Math.sin(timbre * 13063) + 1.5) * 400)::ms => e[activeMelSynth % numSynths].decayTime;
 	e[activeMelSynth % numSynths].keyOn();
 	activeMelSynth => int capNote;
@@ -288,7 +288,7 @@ spork ~ drumPlay();
 int sameNote;
 float synthNote;
 
-0.2 => dac.gain;
+0.3 => dac.gain;
 
 while(true){
 	if(Math.randomf() > 0.4){
