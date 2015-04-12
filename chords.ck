@@ -3,7 +3,7 @@
 OscRecv recv2;
 6449 => recv2.port;
 recv2.listen();
-recv2.event( "/timbre/lifetime/n1/n2/n3/n4/n5/n6/n7/n8, f i i i i i i i i i" ) @=> OscEvent @ om;
+recv2.event( "/timbre/lifetime/n1/n2/n3/n4/n5/n6/n7/n8/id, f i i i i i i i i i i" ) @=> OscEvent @ om;
 // key is an integer MIDI note value (e.g., C is 0, C# is 1, etc.)
 // root is an integer MIDI note value (e.g., C is 0, C# is 1, etc.)
 // type is an integer (0 = major, 1 = minor, 2=dim, 3=aug, 4=sus4, 5=dom7)
@@ -12,6 +12,10 @@ OscRecv recv;
 6450 => recv.port;
 recv.listen();
 recv.event( "/key/root/type, i i i" ) @=> OscEvent @ oe;
+
+OscSend xmit;
+xmit.setHost("localhost", 6452);
+
 
 0 => int key;
 0 => int root;
@@ -184,6 +188,7 @@ fun void oscGetMelody(){
 		while(om.nextMsg()){
 			<<<"received melody">>>;
 			int notes[8];
+			int id;
 			if(true){
 				Math.random2(270, 500) => float melTime;
 				om.getFloat() => timbre;
@@ -191,25 +196,28 @@ fun void oscGetMelody(){
 				for(0 => int x; x < notes.cap(); x++){
 					om.getInt() => notes[x];
 				}
-				spork ~ melody(notes, timbre, melTime::ms, lifetime);
+				om.getInt() => id;
+				spork ~ melody(notes, timbre, melTime::ms, lifetime, id);
 			}
 		}
 	}
 }
 
-fun void melody(int notes[], float timbre, dur notedel, int beats){
+fun void melody(int notes[], float timbre, dur notedel, int beats, int id){
 	for(0 => int x; x < beats; x++){
 		if(true){
 			Math.random2(0, 10)::ms => now;
 			if(notes[x % 8] > 60){
-				spork ~ makeMelody(notes[x % 8], timbre, 1 - Math.pow(x $ float / beats $ float, 1.2));
+				spork ~ makeMelody(notes[x % 8], timbre, 1 - Math.pow(x $ float / beats $ float, 1.2), id);
 			}
 		}
 		notedel => now;
 	}
 }
 
-fun void makeMelody(int note, float timbre, float gain){
+fun void makeMelody(int note, float timbre, float gain, int id){
+	xmit.startMsg( "/id", "i" );
+	id => xmit.addInt;
 	84 + (note + key) % 12 => Std.mtof => s[activeMelSynth % numSynths].freq;
 	gain * 0.015 => s[activeMelSynth % numSynths].gain;
 	timbre * 5000 + 1700 => lpm[activeMelSynth % numSynths].freq;
