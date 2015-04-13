@@ -21,7 +21,7 @@ xmit.setHost("localhost", 6452);
 0 => int root;
 0 => int type;
 600 => float portamento;
-1.5 => int detune;
+1.5 => float detune;
 4 => int numSynths;
 0 => int activeSynth;
 0 => int activeMelSynth;
