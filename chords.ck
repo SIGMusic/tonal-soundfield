@@ -20,8 +20,8 @@ xmit.setHost("localhost", 6452);
 0 => int key;
 0 => int root;
 0 => int type;
-700 => float portamento;
-2 => int detune;
+600 => float portamento;
+1.5 => int detune;
 4 => int numSynths;
 0 => int activeSynth;
 0 => int activeMelSynth;
@@ -105,22 +105,22 @@ float timbre;
 	[-1, 6, 9, 11, 14] ] ] @=> int chordNotes[][][];
 
 SawOsc bassTone => NRev bassRev => LPF bassLp => dac;
-0.1 => bassTone.gain;
+0.04 => bassTone.gain;
 400 => bassLp.freq;
-0.2 => bassRev.mix;
-6 => bassLp.Q;
+0.3 => bassRev.mix;
+3 => bassLp.Q;
 
 TriOsc fifthTone => NRev fifthRev => LPF fifthLp => dac;
-0.07 => fifthTone.gain;
+0.03 => fifthTone.gain;
 600 => fifthLp.freq;
-0.15 => fifthRev.mix;
-3 => fifthLp.Q;
+0.2 => fifthRev.mix;
+2 => fifthLp.Q;
 
 TriOsc octTone => NRev octRev => LPF octLp => dac;
-0.07 => octTone.gain;
+0.03 => octTone.gain;
 800 => octLp.freq;
-0.15 => octRev.mix;
-3 => octLp.Q;
+0.2 => octRev.mix;
+2 => octLp.Q;
 
 PRCRev lrev;
 LPF lmasterLP;
@@ -136,10 +136,14 @@ LPF rmasterLP;
 1 => rmasterLP.Q;
 rrev => rmasterLP => dac.right;
 
-NRev lmelrev => dac.left;
+NRev lmelrev => Dyno lmeld => dac.left;
 0.3 => lmelrev.mix;
-NRev rmelrev => dac.right;
+lmeld.limit();
+lmeld.thresh(0.16);
+NRev rmelrev => Dyno rmeld => dac.right;
 0.3 => rmelrev.mix;
+rmeld.limit();
+rmeld.thresh(0.16);
 
 SinOsc drum => LPF drumf => dac;
 1000 => drumf.freq;
@@ -170,7 +174,7 @@ fun void oscGetChord(){
 			oe.getInt() => type;
 			bassTone.freq() => float currentFreq;
 			(root + key) % 12 + 48 => Std.mtof => float destFreq;
-			Math.round(portamento * Math.randomf()) $ int => int portTime;
+			Math.max(Math.round(portamento * Math.random2f(-0.4, 1.2)), 18) $ int => int portTime;
 			for(0 => int x; x < portTime; x++){
 				currentFreq + ((destFreq - currentFreq) * x / portTime) => bassTone.freq;
 				bassTone.freq() * 2 - 3 => octTone.freq;
@@ -192,7 +196,7 @@ fun void oscGetMelody(){
 			if(true){
 				Math.random2(270, 500) => float melTime;
 				om.getFloat() => timbre;
-				om.getInt() * (1000 / melTime) $ int => lifetime;
+				om.getInt() * (800 / melTime) $ int => lifetime;
 				for(0 => int x; x < notes.cap(); x++){
 					om.getInt() => notes[x];
 				}
@@ -219,11 +223,11 @@ fun void makeMelody(int note, float timbre, float gain, int id){
 	xmit.startMsg( "/id", "i" );
 	id => xmit.addInt;
 	84 + (note + key) % 12 => Std.mtof => s[activeMelSynth % numSynths].freq;
-	gain * 0.015 => s[activeMelSynth % numSynths].gain;
-	timbre * 5000 + 1700 => lpm[activeMelSynth % numSynths].freq;
-	Math.sin(timbre * 7104) * 1.5 + 1 => lpm[activeMelSynth % numSynths].Q;
+	gain * 0.03 => s[activeMelSynth % numSynths].gain;
+	(id % 5) * 800 + 1700 => lpm[activeMelSynth % numSynths].freq;
+	//Math.sin(timbre * 7104) * 1.5 + 1 => lpm[activeMelSynth % numSynths].Q;
 	Math.sin(timbre * 16931) => p[activeMelSynth % numSynths].pan;
-	((Math.sin(timbre * 13063) + 1) * 30)::ms => e[activeMelSynth % numSynths].attackTime;
+	((Math.sin(timbre * 13063) + 1) * 80)::ms => e[activeMelSynth % numSynths].attackTime;
 	((Math.sin(timbre * 13063) + 1.5) * 400)::ms => e[activeMelSynth % numSynths].decayTime;
 	e[activeMelSynth % numSynths].keyOn();
 	activeMelSynth => int capNote;
@@ -252,7 +256,7 @@ fun void drumPlay(){
 			druml + Math.random2(-10, 10) => druml;
 			for(0 => int i; i < druml; i++){
 				drum.freq(Math.exp(-0.1 * i) * 400 + (bassTone.freq() / 2));
-				Math.sin(x $ float * Math.PI / 50) * 0.06 => drum.gain;
+				Math.sin(x $ float * Math.PI / 50) * 0.08 => drum.gain;
 				1::ms => now;
 			}
 		}
@@ -262,7 +266,7 @@ fun void drumPlay(){
 
 for(0 => int i; i < numSynths; i++){
 	osc[i] => env[i] => lp[i] => oscPan[i];
-	0.03 => osc[i].gain;
+	0.042 => osc[i].gain;
 	oscPan[i].left => lrev;
 	oscPan[i].right => rrev;
 	0.75 - 1.5 * (i $ float / (numSynths - 1)) => oscPan[i].pan;
@@ -271,8 +275,8 @@ for(0 => int i; i < numSynths; i++){
 	60::ms => env[i].decayTime;
 	0.8 => env[i].sustainLevel;
 	1000::ms => env[i].releaseTime;
-	800 => lp[i].freq;
-	3 => lp[i].Q;
+	1200 => lp[i].freq;
+	3.5 => lp[i].Q;
 	Math.random2f(200, 500) => lfoDepth[i];
 	Math.random2f(80, 200) => lfoSpeed[i];
 }
@@ -322,7 +326,7 @@ while(true){
 		}
 		env[activeSynth].keyOff(1);
 	}
-	else if(Math.randomf() > 0.96){
+	else if(Math.randomf() > 0.94){
 		spork ~ drumPlay();
 	}
 	Math.random2(1500, 2000)::ms => now;

@@ -15,7 +15,7 @@ wss.on('connection', function connection(ws){
     if(message.event == 'comet' && message.melody){
       crypto.randomBytes(18, function(ex, buf){
         var id = buf.toString('hex');
-        var timbre = (message.color.r * 0.6 + message.color.g * 0.8 + message.color.b * 0.5) % 1;
+        var timbre = (message.color.r * 0.6 + message.color.g * 0.8 + message.color.b * 0.5 + Math.random() * 0.1) % 1;
         args = [timbre, message.lifespan];
         var melLength = Math.min(8, message.melody.length);
         for(var x = 0; x < melLength; x++){
